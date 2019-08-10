@@ -15,13 +15,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=[
-    'lightgbm>=',
-    'matplotlib>=',
-    'numpy>=',
-    'pandas>=',
-    'scikit-learn>=',
-    'seaborn>=',
-    ],
     packages=find_packages(),
 )
