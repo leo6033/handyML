@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-setuptools.setup(
+setup(
     name="handyML ITryagain",
     version="0.0.1",
     author="ITryagain",
