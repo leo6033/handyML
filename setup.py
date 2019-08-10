@@ -5,7 +5,7 @@ with open('README.md') as f:
     LONG_DESCRIPTION = f.read()
 
 setup(
-    name="handyML ITryagain",
+    name="handyML",
     version="0.0.1",
     author="ITryagain",
     author_email="long452a@163.com",
