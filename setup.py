@@ -9,11 +9,19 @@ setuptools.setup(
     description="A library for data science",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
-    packages=setuptools.find_packages(),
+    url="https://github.com/leo6033/handyML",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+    'lightgbm>=',
+    'matplotlib>=',
+    'numpy>=',
+    'pandas>=',
+    'scikit-learn>=',
+    'seaborn>=',
+    ],
+    packages=find_packages(),
 )
