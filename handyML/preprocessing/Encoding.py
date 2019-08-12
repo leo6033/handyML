@@ -7,6 +7,7 @@ Reference:
         https://www.kaggle.com/c/avito-demand-prediction/discussion/60059 (Bayesian target encoding)
         https://www.kaggle.com/tnarik/likelihood-encoding-of-categorical-features (likelihood encoding)
         https://zhuanlan.zhihu.com/p/40231966
+        https://mp.weixin.qq.com/s/U93vvFwZ8vSJuswk24yc6w
 
 """
 import numpy as np
