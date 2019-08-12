@@ -25,15 +25,16 @@ def one_hot_encode(train_data, test_data, columns):
         for i in t:
             try:
                 col = columns[i]
-                encoded_cols.append(pd.get_dummies(all_data[col], prefix='one_hot_'+col, drop_first=True))
+                encoded_cols.append(pd.get_dummies(all_data[col], prefix='one_hot_'+col))
             except StopIteration:
                 break
     all_encoded = pd.concat(encoded_cols, axis=1)
     return all_encoded.iloc[:train_data.shape[0], :], all_encoded.iloc[train_data.shape[0]:, :]
 
 
-def label_encode(train_data, test_data, columns, is_concat=False):
+def label_encode(train_data, test_data, columns, is_concat=False, fill_na=True):
     """
+    :param: fill_na: if fill_na == True will fill nan with -1, default True
     :param: is_concat: encoding时是否合并train_data和test_data
     :return: Returns the train and test DataFrame with encoded columns
     """
@@ -47,7 +48,8 @@ def label_encode(train_data, test_data, columns, is_concat=False):
                     factorised = pd.factorize(all_data[col])[1]
                     labels = pd.Series(range(len(factorised)), index=factorised)
                     encoded_col = all_data[col].map(labels)
-                    encoded_col[encoded_col.isnull()] = -1
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = -1
                     encoded_cols.append(pd.DataFrame({'label_'+col: encoded_col}))
                 except StopIteration:
                     break
@@ -61,7 +63,8 @@ def label_encode(train_data, test_data, columns, is_concat=False):
                     encoded_train = train_data[col].map(labels)
                     encode_test = test_data[col].map(labels)
                     encoded_col = pd.concat([encoded_train, encode_test], axis=0)
-                    encoded_col[encoded_col.isnull()] = -1
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = -1
                     encoded_cols.append(pd.DataFrame({'label_'+col: encoded_col}))
                 except StopIteration:
                     break
@@ -69,8 +72,9 @@ def label_encode(train_data, test_data, columns, is_concat=False):
     return all_encoded.iloc[:train_data.shape[0], :], all_encoded.iloc[train_data.shape[0]:, :]
 
 
-def freq_encode(train_data, test_data, columns, is_concat=False):
+def freq_encode(train_data, test_data, columns, is_concat=False, fill_na=True):
     """
+    :param: fill_na: if fill_na == True will fill nan with 0, default True
     :param: is_concat: encoding时是否合并train_data和test_data
     :return: Returns the train and test DataFrame with encoded columns
     """
@@ -84,6 +88,8 @@ def freq_encode(train_data, test_data, columns, is_concat=False):
                     col = columns[i]
                     freqs_cat = all_data.groupby(col)[col].count() / nsamples
                     encoded_col = all_data[col].map(freqs_cat)
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = 0
                     encoded_cols.append(pd.DataFrame({'freq_'+col: encoded_col}))
                 except StopIteration:
                     break
@@ -96,7 +102,8 @@ def freq_encode(train_data, test_data, columns, is_concat=False):
                     encoded_train = train_data[col].map(freqs_cat)
                     encoded_test = test_data[col].map(freqs_cat)
                     encoded_col = pd.concat([encoded_train, encoded_test], axis=0)
-                    encoded_col[encoded_col.isnull()] = 0
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = 0
                     encoded_cols.append(pd.DataFrame({'freq_'+col: encoded_col}))
                 except StopIteration:
                     break
@@ -105,7 +112,7 @@ def freq_encode(train_data, test_data, columns, is_concat=False):
 
 
 def mean_encode(train_data, test_data, columns, target_col, reg_method=None,
-                alpha=0, add_random=False, rmean=0, rstd=0.1, folds=1, seed=2019):
+                alpha=5, add_random=False, rmean=0, rstd=0.1, folds=5, seed=2019):
     """
     :return: Returns the train and test DataFrame with encoded columns
     """
@@ -172,7 +179,10 @@ def mean_encode(train_data, test_data, columns, target_col, reg_method=None,
 def bayesian_target_encoding(train_data, valid_data, test_data, columns, target_col, N_min,
                              stat_type='mean', encode_na=False):
     """
+    :param target_col: label
+    :param N_min: regularization term, N_min 越大，regularization效果越强。
     :param stat_type: 包括 "mean" "mode" "median" "var" "skewness" "kurtosis"
+    :param encode_na: 是否对nan进行编码
     :return:Returns the train and test DataFrame with encoded columns
     """
     if not encode_na:
@@ -250,9 +260,47 @@ def nan_encoding(train_data, test_data, columns):
         for i in t:
             try:
                 col = columns[i]
-                encoded_cols.append(pd.get_dummies(all_data[col], prefix='one_hot_' + col, drop_first=True,
+                encoded_cols.append(pd.get_dummies(all_data[col], prefix='nan_' + col, drop_first=True,
                                                    dummy_na=True))
             except StopIteration:
                 break
+    all_encoded = pd.concat(encoded_cols, axis=1)
+    return all_encoded.iloc[:train_data.shape[0], :], all_encoded.iloc[train_data.shape[0]:, :]
+
+
+def count_encoding(train_data, test_data, columns, is_concat=False, fill_na=True):
+    """
+    :param: fill_na: if fill_na == True will fill nan with 0, default True
+    :param: is_concat: encoding时是否合并train_data和test_data
+    :return: Returns the train and test DataFrame with encoded columns
+    """
+    encoded_cols = []
+    if is_concat:
+        all_data = pd.concat([train_data, test_data], axis=0)
+        with tqdm(range(len(columns)), 'count_encoding...') as t:
+            for i in t:
+                try:
+                    col = columns[i]
+                    count_cat = all_data.groupby(col)[col].count()
+                    encoded_col = all_data[col].map(count_cat)
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = 0
+                    encoded_cols.append(pd.DataFrame({'count_' + col: encoded_col}))
+                except StopIteration:
+                    break
+    else:
+        with tqdm(range(len(columns)), 'freq_encoding...') as t:
+            for i in t:
+                try:
+                    col = columns[i]
+                    count_cat = train_data.groupby(col)[col].count()
+                    encoded_train = train_data[col].map(count_cat)
+                    encoded_test = test_data[col].map(count_cat)
+                    encoded_col = pd.concat([encoded_train, encoded_test], axis=0)
+                    if fill_na:
+                        encoded_col[encoded_col.isnull()] = 0
+                    encoded_cols.append(pd.DataFrame({'count_' + col: encoded_col}))
+                except StopIteration:
+                    break
     all_encoded = pd.concat(encoded_cols, axis=1)
     return all_encoded.iloc[:train_data.shape[0], :], all_encoded.iloc[train_data.shape[0]:, :]
