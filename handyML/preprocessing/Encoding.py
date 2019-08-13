@@ -33,10 +33,11 @@ def one_hot_encode(train_data, test_data, columns):
     return all_encoded.iloc[:train_data.shape[0], :], all_encoded.iloc[train_data.shape[0]:, :]
 
 
-def label_encode(train_data, test_data, columns, is_concat=False, fill_na=True):
+def label_encode(train_data, test_data, columns, is_concat=False, fill_na=True, sort=True):
     """
     :param: fill_na: if fill_na == True will fill nan with -1, default True
     :param: is_concat: encoding时是否合并train_data和test_data
+    :param: sort: 映射时是否需要排序
     :return: Returns the train and test DataFrame with encoded columns
     """
     encoded_cols = []
@@ -46,7 +47,7 @@ def label_encode(train_data, test_data, columns, is_concat=False, fill_na=True):
             for i in t:
                 try:
                     col = columns[i]
-                    factorised = pd.factorize(all_data[col])[1]
+                    factorised = pd.factorize(all_data[col], sort=sort)[1]
                     labels = pd.Series(range(len(factorised)), index=factorised)
                     encoded_col = all_data[col].map(labels)
                     if fill_na:
@@ -59,7 +60,7 @@ def label_encode(train_data, test_data, columns, is_concat=False, fill_na=True):
             for i in t:
                 try:
                     col = columns[i]
-                    factorised = pd.factorize(train_data[col])[1]
+                    factorised = pd.factorize(train_data[col], sort=sort)[1]
                     labels = pd.Series(range(len(factorised)), index=factorised)
                     encoded_train = train_data[col].map(labels)
                     encode_test = test_data[col].map(labels)
@@ -211,6 +212,10 @@ def bayesian_target_encoding(train_data, valid_data, test_data, columns, target_
                                                                                 stats, prior_mean, N_min)
             except StopIteration:
                 break
+    if encode_na:
+        train_data[columns] = train_data[columns].astype('category')
+        valid_data[columns] = valid_data[columns].astype('category')
+        test_data[columns] = test_data[columns].astype('category')
     return train_data, valid_data, test_data, feature_cols
 
 
