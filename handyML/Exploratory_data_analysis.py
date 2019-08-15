@@ -23,7 +23,7 @@ class Overview(object):
         return res
     
     @staticmethod
-    def plot_feature_distribution(df, y_features, x_feature=None, hue=None, columns=2):
+    def plot_feature_distribution(df, y_features, x_feature=None, hue=None, columns=5):
         """
         画m×n的折线图/密度图
         :param: df:数据
@@ -60,26 +60,35 @@ class Overview(object):
                 plt.subplot(1,n,i)
             if isinstance(df,dict):
                 for df_ in df.values():
+                    for _ in df.keys():
+                        if df[_] is df_: label = _ 
+                    df_ = df_[~df_[feature].isna()]
+                    
                     if x_feature:
-                        for _ in df.keys():
-                            if df[_] is df_: label = _ 
+                        df_ = df_[~df_[x_feature].isna()]
                         if hue:
                             sns.lineplot(x=x_feature, y=feature, hue=hue, data=df_, label=label)
                         else:
                             sns.lineplot(x=x_feature, y=feature, data=df_, label=label)
                     else:
-                        sns.distplot(df_[feature])
+                        sns.distplot(df_[feature], label=label)
                 plt.legend()
-                plt.xlabel(feature, fontsize=14)
-            else:
                 if x_feature:
+                    plt.xlabel(x_feature, fontsize=14)
+                else:
+                    plt.xlabel(feature, fontsize=14)
+            else:
+                df = df[~df[feature].isna()]
+                if x_feature:
+                    df = df[~df[x_feature].isna()]
                     if hue:
                         sns.lineplot(x=x_feature, y=feature, hue=hue, data=df)
                     else:
                         sns.lineplot(x=x_feature, y=feature, data=df)
+                    plt.xlabel(x_feature, fontsize=14)
                 else:
                     sns.distplot(df[feature])
-                plt.xlabel(feature, fontsize=14)
+                    plt.xlabel(feature, fontsize=14)
             
             plt.tick_params(axis='x', which='major', labelsize=14, pad=0)
             plt.tick_params(axis='y', which='major', labelsize=14)

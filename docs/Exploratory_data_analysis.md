@@ -30,6 +30,91 @@ train = load_data("train_regression")
 Overview.check_missing_data(train)
 ```
 
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Total</th>
+      <th>Percent</th>
+      <th>Types</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>PassengerId</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <th>Survived</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <th>Pclass</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <th>Name</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <th>Sex</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <th>Age</th>
+      <td>177</td>
+      <td>19.865320</td>
+      <td>float64</td>
+    </tr>
+    <tr>
+      <th>SibSp</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <th>Parch</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <th>Ticket</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <th>Fare</th>
+      <td>0</td>
+      <td>0.000000</td>
+      <td>float64</td>
+    </tr>
+    <tr>
+      <th>Cabin</th>
+      <td>687</td>
+      <td>77.104377</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <th>Embarked</th>
+      <td>2</td>
+      <td>0.224467</td>
+      <td>object</td>
+    </tr>
+  </tbody>
+</table>
+
 
 
 #### **plot_feature_distribution** *(df, y_features, x_feature=None, hue=None, columns=2)*
@@ -70,18 +155,30 @@ Overview.check_missing_data(train)
 from handyML.Exploratory_data_analysis import Overview
 from handyML.tests import load_data
 
-train = load_data("train_classification")
-test = load_data("test_classification")
+train = load_data("titanic_train")
+test = load_data("titanic_test")
 
-features = list(test.columns[:5])
+features = [_ for _ in train.columns if _ not in ['Survived', 'Name', 'Ticket', 'Sex', 'Cabin', 'Embarked', 'PassengerId']]
+```
 
+```python
 #绘制train和test的密度图
 Overview.plot_feature_distribution({'train':train,'test':test}, features, columns=5)
+```
 
+![png](img/eda/output_9_0.png)
+
+```python
 #绘制以day为横坐标的折线图，并且按照favorite分开，每行5幅图
 Overview.plot_feature_distribution(train, features, x_feature='day', hue='favorite', columns=5)
+```
 
+![png](img/eda/output_10_0.png)
+
+```python
 #绘制train和test以day为横坐标的折线图
 Overview.plot_feature_distribution({'train':train,'test':test}, features, x_feature='day', columns=5)
 ```
+
+![png](img/eda/output_11_0.png)
 
