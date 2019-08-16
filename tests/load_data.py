@@ -10,7 +10,7 @@ import pandas as pd
 
 def load_data(str):
     try:
-        data=pd.read_csv("handML/dataset/"+str)
+        data=pd.read_csv("../dataset/"+str)
     except:
         traceback.print_exc()
         
