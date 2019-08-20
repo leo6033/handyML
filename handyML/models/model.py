@@ -12,6 +12,7 @@ introduce:
 import time
 import gc
 import numpy as np
+import pandas as pd
 import lightgbm as lgb
 import xgboost as xgb
 from catboost import CatBoostRegressor, CatBoostClassifier
@@ -55,7 +56,8 @@ def group_mean_log_mae(y_true, y_pred, group, floor=1e-9):
 
 def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb', eval_metric='mae', columns=None,
                            model=None, verbose=1000, early_stopping_rounds=200, n_estimators=50000, metrics_dict=None,
-                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean'):
+                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
+                           feature_importance=True):
     """
     A function to train a variety of regression models.
     Returns dictionary with oof predictions, test predictions, scores and, if necessary, feature importances.
@@ -70,7 +72,7 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
     :param: plot_feature_importance - whether to plot feature importance of LGB
     :param: model - sklearn model, works only for "sklearn" model type
     :param: beta_encoding - do beta_encoding in k-folds
-
+    :param: feature_importance - return feature importance
     """
     if beta_encoding:
         if (not isinstance(cat_col, list)) and (not isinstance(cat_col, np.ndarray)):
@@ -79,21 +81,28 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
     if columns is None:
         columns = [col for col in X.columns if col != target_col]
 
+    if feature_importance:
+        if model_type == 'sklearn':
+            feature_importance = False
+
     if metrics_dict is None:
         metrics_dict = {
             'mae': {
                 'lgb_metric_name': 'mae',
                 'catboost_metric_name': 'MAE',
+                'xgb_metric_name': 'mae',
                 'sklearn_scoring_function': metrics.mean_absolute_error
             },
             'group_mae': {
                 'lgb_metric_name': 'mae',
                 'catboost_metric_name': 'MAE',
+                'xgb_metric_name': 'mae',
                 'scoring_function': group_mean_log_mae
             },
             'mse': {
                 'lgb_metric_name': 'mse',
                 'catboost_metric_name': 'MSE',
+                'xgb_metric_name': 'rmse',
                 'sklearn_scoring_function': metrics.mean_squared_error
             }
         }
@@ -104,6 +113,7 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
     scores = []  # list of scores on folds
     oof = np.zeros(len(X))  # out-of-fold predictions on train data
     prediction = np.zeros(len(X_test))  # averaged predictions on train data
+    feature_importance_df = pd.DataFrame()
     for fold_n, (train_index, valid_index) in enumerate(folds.split(X[columns], X[target_col])):
         print('Fold {} started at {}'.format({fold_n + 1}, {time.ctime()}))
         X_train, X_valid = X.iloc[train_index], X.iloc[valid_index]
@@ -129,26 +139,23 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
             model.fit(X_train[columns], X_train[target_col],
                       eval_set=[(X_train[columns], X_train[target_col]), (X_valid[columns], X_valid[target_col])],
                       eval_metric=metrics_dict[eval_metric]['lgb_metric_name'],
+                      categorical_feature=cat_col,
                       verbose=verbose,
                       early_stopping_rounds=early_stopping_rounds)
 
             y_pred_valid = model.predict(X_valid[columns])
             y_pred = model.predict(X_test[columns], num_iteration=model.best_iteration_)
         elif model_type == 'xgb':
-            train_data = xgb.DMatrix(data=X_train[columns], label=X_train[target_col], feature_names=columns)
-            valid_data = xgb.DMatrix(data=X_valid[columns], label=X_valid[target_col], feature_names=columns)
+            model = xgb.XGBRegressor(**params, n_estimators=n_estimators, n_jobs=-1)
+            model.fit(X_train[columns], X_train[target_col],
+                      eval_set=[(X_train[columns], X_train[target_col]), (X_valid[columns], X_valid[target_col])],
+                      eval_metric=metrics_dict[eval_metric]['xgb_metric_name'],
+                      verbose=verbose,
+                      early_stopping_rounds=early_stopping_rounds,
+                      )
 
-            watchlist = [(train_data, 'train'), (valid_data, 'valid')]
-            model = xgb.train(dtrain=train_data,
-                              num_boost_round=n_estimators,
-                              evals=watchlist,
-                              early_stopping_rounds=early_stopping_rounds,
-                              verbose_eval=verbose,
-                              params=params)
-
-            y_pred_valid = model.predict(xgb.DMatrix(X_valid, feature_names=X.columns),
-                                         ntree_limit=model.best_ntree_limit)
-            y_pred = model.predict(xgb.DMatrix(X_test, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
+            y_pred_valid = model.predict(X_valid[columns], ntree_limit=model.best_ntree_limit)
+            y_pred = model.predict(X_test[columns], ntree_limit=model.best_ntree_limit)
         elif model_type == 'cat':
             model = CatBoostRegressor(iterations=n_estimators,
                                       eval_metric=metrics_dict[eval_metric]['catboost_metric_name'],
@@ -179,7 +186,14 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
             scores.append(metrics_dict[eval_metric]['scoring_function'](X_valid[target_col], y_pred_valid,
                                                                         X_valid['group']))
         prediction += y_pred
-        models.append(model)
+
+        if feature_importance:
+            fold_importance_df = pd.DataFrame()
+            fold_importance_df['feature'] = columns
+            fold_importance_df['importance'] = model.feature_importances_
+            fold_importance_df['fold'] = fold_n + 1
+            feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
+
         gc.collect()
 
     prediction /= folds.n_splits
@@ -189,12 +203,13 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
     result_dict['prediction'] = prediction
     result_dict['scores'] = scores
 
-    return result_dict, models
+    return result_dict, feature_importance_df
 
 
 def train_model_classification(X, X_test, target_col, params, folds, model_type='lgb', eval_metric='auc', columns=None,
                            model=None, verbose=1000, early_stopping_rounds=200, n_estimators=50000, metrics_dict=None,
-                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean'):
+                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
+                           feature_importance=False):
     """
     A function to train a variety of regression models.
     Returns dictionary with oof predictions, test predictions, scores and, if necessary, feature importances.
@@ -209,7 +224,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     :param: plot_feature_importance - whether to plot feature importance of LGB
     :param: model - sklearn model, works only for "sklearn" model type
     :param: beta_encoding - do beta_encoding in k-folds
-
+    :param: feature_importance - return feature importance
     """
     if beta_encoding:
         if (not isinstance(cat_col, list)) and (not isinstance(cat_col, np.ndarray)):
@@ -218,11 +233,16 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     if columns is None:
         columns = [col for col in X.columns if col != target_col]
 
+    if feature_importance:
+        if model_type == 'sklearn':
+            feature_importance = False
+
     if metrics_dict is None:
         metrics_dict = {
             'auc': {
                 'lgb_metric_name': eval_auc,
                 'catboost_metric_name': 'AUC',
+                'xgb_metric_name': 'auc',
                 'sklearn_scoring_function': metrics.roc_auc_score
             },
         }
@@ -233,6 +253,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     models = []
     oof = np.zeros(len(X))  # out-of-fold predictions on train data
     prediction = np.zeros(len(X_test))  # averaged predictions on train data
+    feature_importance_df = pd.DataFrame()
     for fold_n, (train_index, valid_index) in enumerate(folds.split(X[columns], X[target_col])):
         print('Fold {} started at {}'.format({fold_n + 1}, {time.ctime()}))
         X_train, X_valid = X.iloc[train_index], X.iloc[valid_index]
@@ -258,26 +279,23 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             model.fit(X_train[columns], X_train[target_col],
                       eval_set=[(X_train[columns], X_train[target_col]), (X_valid[columns], X_valid[target_col])],
                       eval_metric=metrics_dict[eval_metric]['lgb_metric_name'],
+                      categorical_feature=cat_col,
                       verbose=verbose,
                       early_stopping_rounds=early_stopping_rounds)
 
             y_pred_valid = model.predict_proba(X_valid[columns])
             y_pred = model.predict_proba(X_test[columns], num_iteration=model.best_iteration_)
         elif model_type == 'xgb':
-            train_data = xgb.DMatrix(data=X_train[columns], label=X_train[target_col], feature_names=columns)
-            valid_data = xgb.DMatrix(data=X_valid[columns], label=X_valid[target_col], feature_names=columns)
+            model = xgb.XGBClassifier(**params, n_estimators=n_estimators, n_jobs=-1)
+            model.fit(X_train[columns], X_train[target_col],
+                      eval_set=[(X_train[columns], X_train[target_col]), (X_valid[columns], X_valid[target_col])],
+                      eval_metric=metrics_dict[eval_metric]['xgb_metric_name'],
+                      verbose=verbose,
+                      early_stopping_rounds=early_stopping_rounds,
+                      )
 
-            watchlist = [(train_data, 'train'), (valid_data, 'valid')]
-            model = xgb.train(dtrain=train_data,
-                              num_boost_round=n_estimators,
-                              evals=watchlist,
-                              early_stopping_rounds=early_stopping_rounds,
-                              verbose_eval=verbose,
-                              params=params)
-
-            y_pred_valid = model.predict(xgb.DMatrix(X_valid, feature_names=X.columns),
-                                         ntree_limit=model.best_ntree_limit)
-            y_pred = model.predict(xgb.DMatrix(X_test, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
+            y_pred_valid = model.predict_proba(X_valid[columns], ntree_limit=model.best_ntree_limit)
+            y_pred = model.predict_proba(X_test[columns], ntree_limit=model.best_ntree_limit)
         elif model_type == 'cat':
             model = CatBoostClassifier(iterations=n_estimators,
                                        eval_metric=metrics_dict[eval_metric]['catboost_metric_name'],
@@ -288,13 +306,13 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             model.fit(X_train[columns], X_train[target_col], eval_set=(X_valid[columns], X_valid[target_col]))
             gc.collect()
 
-            y_pred_valid = model.predict(X_valid[columns])
-            y_pred = model.predict(X_test[columns])
+            y_pred_valid = model.predict_proba(X_valid[columns])
+            y_pred = model.predict_proba(X_test[columns])
         elif model_type == 'sklearn':
             model = model
             model.fit(X_train[columns], X_train[target_col])
 
-            y_pred_valid = model.predict(X_valid[columns])
+            y_pred_valid = model.predict_proba(X_valid[columns])
             score = metrics_dict[eval_metric]['sklearn_scoring_function'](X_valid[target_col], y_pred_valid)
             print("Fold {}. {}: {}.".format({fold_n}, {eval_metric}, {score}))
             print('')
@@ -308,7 +326,12 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             scores.append(metrics_dict[eval_metric]['scoring_function'](X_valid[target_col], y_pred_valid,
                                                                         X_valid['group']))
         prediction += y_pred
-        models.append(model)
+        if feature_importance:
+            fold_importance_df = pd.DataFrame()
+            fold_importance_df['feature'] = columns
+            fold_importance_df['importance'] = model.feature_importances_
+            fold_importance_df['fold'] = fold_n + 1
+            feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
         gc.collect()
 
     prediction /= folds.n_splits
@@ -318,4 +341,4 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     result_dict['prediction'] = prediction
     result_dict['scores'] = scores
 
-    return result_dict, models
+    return result_dict, feature_importance_df
