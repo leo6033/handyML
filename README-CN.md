@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/github/license/leo6033/handyML)](LICENSE)
 
-[英文文档](../README.md)
+[英文文档](README.md)
 
 ## 目录
 
@@ -27,4 +27,4 @@
 
 ## License
 
-[MIT © Richard McRichface.](../LICENSE)
+[MIT © Richard McRichface.](LICENSE)

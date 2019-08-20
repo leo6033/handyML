@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/github/license/leo6033/handyML)](LICENSE)
 
-[Chinese version ReadME](../README-CN.md)
+[Chinese version ReadME](README-CN.md)
 
 ## Content
 
@@ -27,7 +27,7 @@ A library for data science
 
 ## License
 
-[MIT © Richard McRichface.](../LICENSE)
+[MIT © Richard McRichface.](LICENSE)
 
 
 
