@@ -10,3 +10,4 @@ seaborn>=0.9.0
 xgboost>=0.81
 catboost>=0.16
 tqdm>=4.29.1
+bayesian-optimization>=1.0.1
