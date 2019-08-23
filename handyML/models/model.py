@@ -56,7 +56,7 @@ def group_mean_log_mae(y_true, y_pred, group, floor=1e-9):
 
 def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb', eval_metric='mae', columns=None,
                            model=None, verbose=1000, early_stopping_rounds=200, n_estimators=50000, metrics_dict=None,
-                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
+                           beta_encoding=False, cat_col=None, encode_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
                            feature_importance=True):
     """
     A function to train a variety of regression models.
@@ -73,9 +73,10 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
     :param: model - sklearn model, works only for "sklearn" model type
     :param: beta_encoding - do beta_encoding in k-folds
     :param: feature_importance - return feature importance
+    :param: encode_col - the columns used for encoding
     """
     if beta_encoding:
-        if (not isinstance(cat_col, list)) and (not isinstance(cat_col, np.ndarray)):
+        if (not isinstance(encode_col, list)) and (not isinstance(encode_col, np.ndarray)):
             raise TypeError('cat_col should be list or np.ndarry')
 
     if columns is None:
@@ -121,7 +122,7 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
         if beta_encoding:
             # encode variables
             feature_col = []
-            for var_name in tqdm(cat_col):
+            for var_name in tqdm(encode_col):
                 # fit encoder
                 be = BetaEncoder(var_name, encoding_nan)
                 be.fit(X_train[[var_name, target_col]], target_col)
@@ -185,7 +186,7 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
         else:
             scores.append(metrics_dict[eval_metric]['scoring_function'](X_valid[target_col], y_pred_valid,
                                                                         X_valid['group']))
-        prediction += y_pred
+        prediction += y_pred.reshape(-1,)
 
         if feature_importance:
             fold_importance_df = pd.DataFrame()
@@ -208,7 +209,7 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
 
 def train_model_classification(X, X_test, target_col, params, folds, model_type='lgb', eval_metric='auc', columns=None,
                            model=None, verbose=1000, early_stopping_rounds=200, n_estimators=50000, metrics_dict=None,
-                           beta_encoding=False, cat_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
+                           beta_encoding=False, cat_col=None, encode_col=None, N_min=1, encoding_nan=False, encoding_type='mean',
                            feature_importance=False):
     """
     A function to train a variety of regression models.
@@ -225,9 +226,10 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     :param: model - sklearn model, works only for "sklearn" model type
     :param: beta_encoding - do beta_encoding in k-folds
     :param: feature_importance - return feature importance
+    :param: encode_col - the columns used for encoding
     """
     if beta_encoding:
-        if (not isinstance(cat_col, list)) and (not isinstance(cat_col, np.ndarray)):
+        if (not isinstance(encode_col, list)) and (not isinstance(encode_col, np.ndarray)):
             raise TypeError('cat_col should be list or np.ndarry')
 
     if columns is None:
@@ -247,12 +249,14 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             },
         }
 
+    X = X[columns]
+    X_test = X_test[columns]
+
     result_dict = {}
     # list of scores on folds
     scores = []  # list of scores on folds
-    models = []
-    oof = np.zeros(len(X))  # out-of-fold predictions on train data
-    prediction = np.zeros(len(X_test))  # averaged predictions on train data
+    oof = np.zeros((len(X), 1))  # out-of-fold predictions on train data
+    prediction = np.zeros((len(X_test), 1))  # averaged predictions on train data
     feature_importance_df = pd.DataFrame()
     for fold_n, (train_index, valid_index) in enumerate(folds.split(X[columns], X[target_col])):
         print('Fold {} started at {}'.format({fold_n + 1}, {time.ctime()}))
@@ -261,7 +265,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
         if beta_encoding:
             # encode variables
             feature_col = []
-            for var_name in tqdm(cat_col):
+            for var_name in tqdm(encode_col):
                 # fit encoder
                 be = BetaEncoder(var_name, encoding_nan)
                 be.fit(X_train[[var_name, target_col]], target_col)
@@ -283,8 +287,8 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
                       verbose=verbose,
                       early_stopping_rounds=early_stopping_rounds)
 
-            y_pred_valid = model.predict_proba(X_valid[columns])
-            y_pred = model.predict_proba(X_test[columns], num_iteration=model.best_iteration_)
+            y_pred_valid = model.predict_proba(X_valid[columns])[:, 1]
+            y_pred = model.predict_proba(X_test[columns], num_iteration=model.best_iteration_)[:, 1]
         elif model_type == 'xgb':
             model = xgb.XGBClassifier(**params, n_estimators=n_estimators, n_jobs=-1)
             model.fit(X_train[columns], X_train[target_col],
@@ -294,8 +298,8 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
                       early_stopping_rounds=early_stopping_rounds,
                       )
 
-            y_pred_valid = model.predict_proba(X_valid[columns], ntree_limit=model.best_ntree_limit)
-            y_pred = model.predict_proba(X_test[columns], ntree_limit=model.best_ntree_limit)
+            y_pred_valid = model.predict_proba(X_valid[columns], ntree_limit=model.best_ntree_limit)[:, 1]
+            y_pred = model.predict_proba(X_test[columns], ntree_limit=model.best_ntree_limit)[:, 1]
         elif model_type == 'cat':
             model = CatBoostClassifier(iterations=n_estimators,
                                        eval_metric=metrics_dict[eval_metric]['catboost_metric_name'],
@@ -306,26 +310,26 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             model.fit(X_train[columns], X_train[target_col], eval_set=(X_valid[columns], X_valid[target_col]))
             gc.collect()
 
-            y_pred_valid = model.predict_proba(X_valid[columns])
-            y_pred = model.predict_proba(X_test[columns])
+            y_pred_valid = model.predict_proba(X_valid[columns])[:, 1]
+            y_pred = model.predict_proba(X_test[columns])[:, 1]
         elif model_type == 'sklearn':
             model = model
             model.fit(X_train[columns], X_train[target_col])
 
-            y_pred_valid = model.predict_proba(X_valid[columns])
+            y_pred_valid = model.predict_proba(X_valid[columns])[:, 1]
             score = metrics_dict[eval_metric]['sklearn_scoring_function'](X_valid[target_col], y_pred_valid)
             print("Fold {}. {}: {}.".format({fold_n}, {eval_metric}, {score}))
             print('')
 
-            y_pred = model.predict_proba(X_test[columns])
+            y_pred = model.predict_proba(X_test[columns])[:, 1]
 
-        oof[valid_index] = y_pred_valid.reshape(-1,)
+        oof[valid_index] = y_pred_valid.reshape(-1, 1)
         if eval_metric != 'group_mae':
             scores.append(metrics_dict[eval_metric]['sklearn_scoring_function'](X_valid[target_col], y_pred_valid))
         else:
             scores.append(metrics_dict[eval_metric]['scoring_function'](X_valid[target_col], y_pred_valid,
                                                                         X_valid['group']))
-        prediction += y_pred
+        prediction += y_pred.reshape(-1, 1)
         if feature_importance:
             fold_importance_df = pd.DataFrame()
             fold_importance_df['feature'] = columns
