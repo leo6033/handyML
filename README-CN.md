@@ -19,7 +19,7 @@
 
 + PyPI (pip):
 
-> 
+> pip install handyML
 
 ## 文档
 

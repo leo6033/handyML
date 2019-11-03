@@ -2,8 +2,10 @@ from setuptools import find_packages
 from setuptools import setup
 from os import path as os_path
 
+this_directory = os_path.abspath(os_path.dirname(__file__))
+
 def read_file(filename):
-    with open(os_path.join(this_diretory, filename), encoding='utf-8') as f:
+    with open(os_path.join(this_directory, filename), encoding='utf-8') as f:
         long_description = f.read()
     return long_description
 
@@ -12,7 +14,7 @@ def read_requirement(filename):
 
 setup(
     name="handyML",
-    version="0.0.1",
+    version="0.0.1b",
     author="ITryagain",
     author_email="long452a@163.com",
     python_requires='>=3.6.0',

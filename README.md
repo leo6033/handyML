@@ -19,7 +19,7 @@ A library for data science
 
 - PyPI (pip):
 
-> 
+> pip install hangyML
 
 ## Document
 
