@@ -1,16 +1,23 @@
 from setuptools import find_packages
 from setuptools import setup
+from os import path as os_path
 
-with open('README.md') as f:
-    LONG_DESCRIPTION = f.read()
+def read_file(filename):
+    with open(os_path.join(this_diretory, filename), encoding='utf-8') as f:
+        long_description = f.read()
+    return long_description
+
+def read_requirement(filename):
+    return [line.strip() for line in read_file(filename).splitlines() if not line.startswith('#')]
 
 setup(
     name="handyML",
     version="0.0.1",
     author="ITryagain",
     author_email="long452a@163.com",
+    python_requires='>=3.6.0',
     description="A library for data science",
-    long_description=LONG_DESCRIPTION,
+    long_description=read_file('README.md'),
     long_description_content_type="text/markdown",
     url="https://github.com/leo6033/handyML",
     classifiers=[
@@ -19,4 +26,5 @@ setup(
         "Operating System :: OS Independent",
     ],
     packages=find_packages(),
+    install_requires=read_requirement('requirements.txt'),
 )
