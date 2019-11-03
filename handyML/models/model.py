@@ -307,7 +307,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
                                        verbose=verbose,
                                        cat_features=cat_col,
                                        **params)
-            model.fit(X_train, y_train,, eval_set=(X_valid, y_valid))
+            model.fit(X_train, y_train, eval_set=(X_valid, y_valid))
             gc.collect()
 
             y_pred_valid = model.predict_proba(X_valid)[:, 1]
@@ -325,7 +325,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
 
         oof[valid_index] = y_pred_valid.reshape(-1, 1)
         if eval_metric != 'group_mae':
-            scores.append(metrics_dict[eval_metric]['sklearn_scoring_function'](y_valid], y_pred_valid))
+            scores.append(metrics_dict[eval_metric]['sklearn_scoring_function'](y_valid, y_pred_valid))
         else:
             scores.append(metrics_dict[eval_metric]['scoring_function'](y_valid, y_pred_valid,
                                                                         X_valid['group']))
@@ -346,3 +346,4 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
     result_dict['scores'] = scores
 
     return result_dict, feature_importance_df
+    
