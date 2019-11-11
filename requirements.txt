@@ -8,3 +8,5 @@ catboost>=0.16
 tqdm>=4.29.1
 bayesian-optimization>=1.0.1
 lightgbm
+numba
+scipy
