@@ -18,7 +18,7 @@ import xgboost as xgb
 from catboost import CatBoostRegressor, CatBoostClassifier
 from sklearn import metrics
 from numba import jit
-from preprocessing.Encoding import BetaEncoder
+from handyML.preprocessing.Encoding import BetaEncoder
 from tqdm import tqdm
 
 
