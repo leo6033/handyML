@@ -110,7 +110,6 @@ def train_model_regression(X, X_test, target_col, params, folds, model_type='lgb
 
     result_dict = {}
     # list of scores on folds
-    models = []
     scores = []  # list of scores on folds
     oof = np.zeros(len(X))  # out-of-fold predictions on train data
     prediction = np.zeros(len(X_test))  # averaged predictions on train data
