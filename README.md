@@ -1,6 +1,7 @@
 # handyML
 
 [![license](https://img.shields.io/github/license/leo6033/handyML)](LICENSE)
+[![Build Status](https://travis-ci.org/leo6033/handyML.svg?branch=master)](https://travis-ci.org/leo6033/handyML)
 
 [Chinese version ReadME](README-CN.md)
 
