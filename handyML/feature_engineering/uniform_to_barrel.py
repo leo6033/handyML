@@ -26,3 +26,4 @@ def continous_to_category(data, features):
     return data
 # 用法如下：
 # newdata = continous_to_category(data, 'feature_name')
+# 之后newdata中会出现新特征"cat_feature_name"

@@ -24,7 +24,7 @@
 
 ```python
 from handyML.Exploratory_data_analysis import Overview
-from handyML.tests import load_data
+from handyML.tests import test_load_data
 
 train = load_data("train_regression")
 Overview.check_missing_data(train)
