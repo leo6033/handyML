@@ -248,9 +248,6 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             },
         }
 
-    X = X[columns]
-    X_test = X_test[columns]
-
     result_dict = {}
     # list of scores on folds
     scores = []  # list of scores on folds
@@ -282,7 +279,7 @@ def train_model_classification(X, X_test, target_col, params, folds, model_type=
             model.fit(X_train, y_train,
                       eval_set=[(X_train, y_train), (X_valid, y_valid)],
                       eval_metric=metrics_dict[eval_metric]['lgb_metric_name'],
-                      categorical_feature=cat_col,
+                    #   categorical_feature=cat_col,
                       verbose=verbose,
                       early_stopping_rounds=early_stopping_rounds)
 

@@ -14,7 +14,7 @@ def read_requirement(filename):
 
 setup(
     name="handyML",
-    version="0.0.1b",
+    version="0.0.1b1",
     author="ITryagain",
     author_email="long452a@163.com",
     python_requires='>=3.6.0',
